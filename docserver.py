@@ -20,10 +20,12 @@ A PyPI-style documentation server.
 """
 
 import cgi
+import email.utils
 import glob
 import mimetypes
 import os
 import os.path
+import time
 import zipfile
 
 import pystache
@@ -207,10 +209,12 @@ class DocServer(object):
                 info = archive.getinfo(filename)
             except KeyError:
                 raise NotFound()
+            timestamp = time.mktime(info.date_time + (0, 0, 0))
             content = archive.read(filename)
 
         return (http.OK,
-                [('Content-Type', mimetype)],
+                [('Content-Type', mimetype),
+                 ('Last-Modified', email.utils.formatdate(timestamp))],
                 [content])
 
     def contents(self, environ):
