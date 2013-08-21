@@ -67,3 +67,15 @@ class DocServer(object):
         return (http.OK,
                 [('Content-Type', 'text/plain')],
                 ['Hello, world!'])
+
+
+def main():
+    """
+    Run the WSGI application using :mod:`wsgiref`.
+    """
+    from wsgiref.simple_server import make_server
+    make_server('localhost', 8080, DocServer()).serve_forever()
+
+
+if __name__ == '__main__':
+    main()
