@@ -41,11 +41,30 @@ class HTTPError(Exception):
         return []
 
 
+class MethodNotAllowed(HTTPError):
+    """
+    Method not allowed.
+    """
+
+    def __init__(self, allowed=(), message=None):
+        super(MethodNotAllowed, self).__init__(http.METHOD_NOT_ALLOWED,
+                                               message)
+        self.allowed = allowed
+
+    def headers(self):
+        return [('Allow', ', '.join(self.allowed))]
+
+
 def make_status_line(code):
     """
     Create a HTTP status line.
     """
     return '{0} {1}'.format(code, http.responses[code])
+
+
+def require_method(environ, allowed=()):
+    if environ['REQUEST_METHOD'] not in allowed:
+        raise MethodNotAllowed(allowed)
 
 
 class DocServer(object):
@@ -64,9 +83,29 @@ class DocServer(object):
             return [exc.message]
 
     def run(self, environ):
+        if environ['PATH_INFO'] != '/':
+            require_method(environ, ('GET', 'HEAD'))
+            return self.display(environ)
+        if environ['REQUEST_METHOD'] in ('GET', 'HEAD'):
+            return self.contents(environ)
+        if environ['REQUEST_METHOD'] == 'POST':
+            return self.submit(environ)
+        raise MethodNotAllowed(('GET', 'HEAD', 'POST'))
+
+    def display(self, environ):
         return (http.OK,
                 [('Content-Type', 'text/plain')],
-                ['Hello, world!'])
+                [environ['PATH_INFO']])
+
+    def contents(self, environ):
+        return (http.OK,
+                [('Content-Type', 'text/plain')],
+                [environ['PATH_INFO']])
+
+    def submit(self, environ):
+        return (http.OK,
+                [('Content-Type', 'text/plain')],
+                [environ['PATH_INFO']])
 
 
 def main():
