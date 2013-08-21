@@ -5,9 +5,9 @@ Submission
 
 Uploads work in the same fashion supported by PyPI_ and Sphinx-PyPI-upload_.
 You submit documentation by performing a POST request with the mimetype
-``multipart/form-data``. There are three fields: :kbd:`:action`, which has
-the value :kbd:`doc_upload`; :kbd:`name`, which contains the name of the
-package; and :kbd:`content`, which contains a Zip file of the documentation.
+``multipart/form-data``. There are three fields: ``:action``, which has the
+value ``doc_upload``; ``name``, which contains the name of the package; and
+``content``, which contains a Zip file of the documentation.
 
 Name normalisation
 ==================
@@ -21,10 +21,10 @@ other than alphanumerics and hyphens are rejected.
 Storage
 =======
 
-Zip files are stored as is in a shallow directory hierarchy where the name of a
-directory is based on the first two characters of the packages it contains.
+Zip files are stored as is in a shallow directory hierarchy where the name of
+a directory is based on the first two characters of the packages it contains.
 Thus the documentation for the *dbkit* package would be stored as
-:file:`db/dbkit.zip`.
+``db/dbkit.zip``.
 
 .. _PyPI: https://pypi.python.org/
 .. _Sphinx-PyPI-upload: https://bitbucket.org/jezdez/sphinx-pypi-upload/
