@@ -20,14 +20,38 @@ A PyPI-style documentation server.
 """
 
 import cgi
+import glob
 import os
 import os.path
 
+import pystache
 import six
 from six.moves import http_client as http
 
 
 DEFAULT_STORE = '~/docstore'
+
+
+DEFAULT_FRONTPAGE = six.u("""\
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Documentation</title>
+    </head>
+    <body>
+        <h1>Documentation</h1>
+        <ul>
+            {{#entries}}
+            <li><a href="{{name}}/">{{name}}</a></li>
+            {{/entries}}
+
+            {{^entries}}
+            <li>No entries</li>
+            {{/entries}}
+        </ul>
+    </body>
+</html>
+""")
 
 
 class HTTPError(Exception):
@@ -92,16 +116,21 @@ def parse_form(environ):
         environ=environ)
 
 
+def dictify(key, entries):
+    return [{key: value} for value in entries]
+
+
 class DocServer(object):
 
     def __init__(self, store=None):
         super(DocServer, self).__init__()
         if store is None:
             store = os.getenv('DOCSERVER_STORE', DEFAULT_STORE)
-        store = os.path.realpath(os.path.expanduser(store))
+        store = os.path.realpath(os.path.expanduser(store)).rstrip('/')
         if not os.path.isdir(store):
             raise BadPath('"{0}" not found.'.format(store))
         self.store = store
+        self.frontpage = pystache.parse(DEFAULT_FRONTPAGE)
 
     def __call__(self, environ, start_response):
         try:
@@ -129,14 +158,22 @@ class DocServer(object):
                 [environ['PATH_INFO']])
 
     def contents(self, environ):
+        entries = dictify('name', self.get_entries())
+        content = pystache.render(self.frontpage, entries=entries)
         return (http.OK,
-                [('Content-Type', 'text/plain')],
-                [environ['PATH_INFO']])
+                [('Content-Type', 'text/html; charset=utf-8')],
+                [content.encode('utf-8')])
 
     def submit(self, environ):
         return (http.OK,
                 [('Content-Type', 'text/plain')],
                 [environ['PATH_INFO']])
+
+    def get_entries(self):
+        # The first '4' refers to '/??/', the second to '.zip'
+        return sorted(entry[len(self.store) + 4:-4]
+                      for entry in glob.iglob(os.path.join(self.store,
+                                                           '??/*.zip')))
 
 
 # pylint: disable-msg=W0613
