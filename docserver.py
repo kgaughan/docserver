@@ -22,6 +22,25 @@ A PyPI-style documentation server.
 from six.moves import http_client as http
 
 
+class HTTPError(Exception):
+    """
+    Application wants to respond with the given HTTP status code.
+    """
+
+    def __init__(self, code, message=None):
+        if message is None:
+            message = http.responses[code]
+        super(HTTPError, self).__init__(message)
+        self.code = code
+
+    # pylint: disable-msg=R0201
+    def headers(self):
+        """
+        Additional headers to be sent.
+        """
+        return []
+
+
 def make_status_line(code):
     """
     Create a HTTP status line.
@@ -35,6 +54,16 @@ class DocServer(object):
         super(DocServer, self).__init__()
 
     def __call__(self, environ, start_response):
-        start_response(make_status_line(http.OK),
-                       [('Content-Type', 'text/plain')])
-        return ['Hello, world!']
+        try:
+            code, headers, content = self.run(environ)
+            start_response(make_status_line(code), headers)
+            return content
+        except HTTPError as exc:
+            start_response(make_status_line(exc.code),
+                           [('Content-Type', 'text/plain')] + exc.headers)
+            return [exc.message]
+
+    def run(self, environ):
+        return (http.OK,
+                [('Content-Type', 'text/plain')],
+                ['Hello, world!'])
