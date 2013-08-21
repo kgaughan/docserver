@@ -20,10 +20,14 @@ A PyPI-style documentation server.
 """
 
 import cgi
+import os
 import os.path
 
 import six
 from six.moves import http_client as http
+
+
+DEFAULT_STORE = '~/docstore'
 
 
 class HTTPError(Exception):
@@ -93,7 +97,7 @@ class DocServer(object):
     def __init__(self, store=None):
         super(DocServer, self).__init__()
         if store is None:
-            store = '~/docstore'
+            store = os.getenv('DOCSERVER_STORE', DEFAULT_STORE)
         store = os.path.realpath(os.path.expanduser(store))
         if not os.path.isdir(store):
             raise BadPath('"{0}" not found.'.format(store))
@@ -133,6 +137,14 @@ class DocServer(object):
         return (http.OK,
                 [('Content-Type', 'text/plain')],
                 [environ['PATH_INFO']])
+
+
+# pylint: disable-msg=W0613
+def create_application(global_config=None, **local_conf):
+    """
+    Create a configured instance of the WSGI application.
+    """
+    return DocServer(store=local_conf.get('store'))
 
 
 def main():
