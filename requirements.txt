@@ -1,3 +1,0 @@
-passlib
-pystache
-six

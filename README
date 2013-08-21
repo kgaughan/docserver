@@ -13,6 +13,13 @@ Installation
 
 TODO
 
+Testing
+=======
+
+Use the following to run the test suite::
+
+    $ python setup.py test
+
 Internals
 =========
 
