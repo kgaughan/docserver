@@ -1,4 +1,0 @@
-docserver
-=========
-
-Documentation server
