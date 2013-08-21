@@ -19,6 +19,8 @@
 A PyPI-style documentation server.
 """
 
+import os.path
+
 from six.moves import http_client as http
 
 
@@ -55,6 +57,13 @@ class MethodNotAllowed(HTTPError):
         return [('Allow', ', '.join(self.allowed))]
 
 
+class BadPath(Exception):
+    """
+    Bad path.
+    """
+    pass
+
+
 def make_status_line(code):
     """
     Create a HTTP status line.
@@ -69,8 +78,14 @@ def require_method(environ, allowed=()):
 
 class DocServer(object):
 
-    def __init__(self):
+    def __init__(self, store=None):
         super(DocServer, self).__init__()
+        if store is None:
+            store = '~/docstore'
+        store = os.path.realpath(os.path.expanduser(store))
+        if not os.path.isdir(store):
+            raise BadPath('"{0}" not found.'.format(store))
+        self.store = store
 
     def __call__(self, environ, start_response):
         try:
