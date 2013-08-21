@@ -139,7 +139,7 @@ class DocServer(object):
             return content
         except HTTPError as exc:
             start_response(make_status_line(exc.code),
-                           [('Content-Type', 'text/plain')] + exc.headers)
+                           [('Content-Type', 'text/plain')] + exc.headers())
             return [exc.message]
 
     def run(self, environ):
