@@ -21,8 +21,10 @@ A PyPI-style documentation server.
 
 import cgi
 import glob
+import mimetypes
 import os
 import os.path
+import zipfile
 
 import pystache
 import six
@@ -186,15 +188,30 @@ class DocServer(object):
 
     def display(self, environ):
         parts = environ['PATH_INFO'].split('/', 2)
-        archive = os.path.join(self.store, parts[1][:2], parts[1] + '.zip')
-        print archive
+        path = os.path.join(self.store, parts[1][:2], parts[1] + '.zip')
         if len(parts) == 2:
-            if os.path.isfile(archive):
+            if os.path.isfile(path):
                 raise MovedPermanently(add_slash(environ))
             raise NotFound()
+
+        filename = parts[2]
+        if filename == '' or filename[-1:] == '/':
+            filename += 'index.html'
+
+        mimetype, _ = mimetypes.guess_type(filename)
+        if mimetype is None:
+            mimetype = 'application/octet-stream'
+
+        with zipfile.ZipFile(path, 'r') as archive:
+            try:
+                info = archive.getinfo(filename)
+            except KeyError:
+                raise NotFound()
+            content = archive.read(filename)
+
         return (http.OK,
-                [('Content-Type', 'text/plain')],
-                [environ['PATH_INFO']])
+                [('Content-Type', mimetype)],
+                [content])
 
     def contents(self, environ):
         entries = dictify('name', self.get_entries())
