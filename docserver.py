@@ -19,8 +19,10 @@
 A PyPI-style documentation server.
 """
 
+import cgi
 import os.path
 
+import six
 from six.moves import http_client as http
 
 
@@ -74,6 +76,16 @@ def make_status_line(code):
 def require_method(environ, allowed=()):
     if environ['REQUEST_METHOD'] not in allowed:
         raise MethodNotAllowed(allowed)
+
+
+def parse_form(environ):
+    try:
+        request_size = int(environ.get('CONTENT_LENGTH', 0))
+    except ValueError:
+        request_size = 0
+    return cgi.FieldStorage(
+        fp=six.BytesIO(environ['wsgi.input'].read(request_size)),
+        environ=environ)
 
 
 class DocServer(object):
