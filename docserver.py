@@ -77,6 +77,19 @@ class HTTPError(Exception):
         return []
 
 
+class NotModified(HTTPError):
+    """
+    Resource not modified.
+    """
+
+    def __init__(self, expire=None):
+        super(NotModified, self).__init__(http.NOT_MODIFIED)
+        self.expire = expire
+
+    def headers(self):
+        return [('Expire', email.utils.formatdate(self.expire))]
+
+
 class NotFound(HTTPError):
     """
     Resource not found.
@@ -156,6 +169,18 @@ def add_slash(environ):
                                   environ['PATH_INFO'])
 
 
+def check_if_unmodified(environ, timestamp):
+    """
+    Check the *If-Modified-Since* header and to see if we need to send a
+    '304 Not Modified' response.
+    """
+    last_modified = environ.get('HTTP_IF_MODIFIED_SINCE')
+    if last_modified is None:
+        return False
+    parsed = email.utils.parsedate(last_modified)
+    return last_modified != parsed
+
+
 class DocServer(object):
 
     def __init__(self, store=None):
@@ -174,9 +199,15 @@ class DocServer(object):
             start_response(make_status_line(code), headers)
             return content
         except HTTPError as exc:
-            start_response(make_status_line(exc.code),
-                           [('Content-Type', 'text/plain')] + exc.headers())
-            return [exc.message]
+            headers = exc.headers()
+            if exc.code in (100, 101, 204, 304):
+                # These must not send message bodies.
+                content = []
+            else:
+                headers.append(('Content-Type', 'text/plain'))
+                content = [exc.message]
+            start_response(make_status_line(exc.code), headers)
+            return content
 
     def run(self, environ):
         if environ['PATH_INFO'] != '/':
@@ -210,6 +241,9 @@ class DocServer(object):
             except KeyError:
                 raise NotFound()
             timestamp = time.mktime(info.date_time + (0, 0, 0))
+            if check_if_unmodified(environ, timestamp):
+                # Expire 5m from now.
+                raise NotModified(time.time() + 60 * 5)
             content = archive.read(filename)
 
         return (http.OK,
