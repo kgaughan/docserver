@@ -73,6 +73,29 @@ class HTTPError(Exception):
         return []
 
 
+class NotFound(HTTPError):
+    """
+    Resource not found.
+    """
+
+    def __init__(self, message=None):
+        super(NotFound, self).__init__(http.NOT_FOUND, message)
+
+
+class MovedPermanently(HTTPError):
+    """
+    Resource moved permanently.
+    """
+
+    def __init__(self, location, message=None):
+        super(MovedPermanently, self).__init__(http.MOVED_PERMANENTLY,
+                                               message)
+        self.location = location
+
+    def headers(self):
+        return [('Location', self.location)]
+
+
 class MethodNotAllowed(HTTPError):
     """
     Method not allowed.
@@ -120,6 +143,15 @@ def dictify(key, entries):
     return [{key: value} for value in entries]
 
 
+def add_slash(environ):
+    """
+    Reconstruct the URL, and append a trailing slash.
+    """
+    return '{0}://{1}{2}/'.format(environ['wsgi.url_scheme'],
+                                  environ['HTTP_HOST'],
+                                  environ['PATH_INFO'])
+
+
 class DocServer(object):
 
     def __init__(self, store=None):
@@ -153,6 +185,13 @@ class DocServer(object):
         raise MethodNotAllowed(('GET', 'HEAD', 'POST'))
 
     def display(self, environ):
+        parts = environ['PATH_INFO'].split('/', 2)
+        archive = os.path.join(self.store, parts[1][:2], parts[1] + '.zip')
+        print archive
+        if len(parts) == 2:
+            if os.path.isfile(archive):
+                raise MovedPermanently(add_slash(environ))
+            raise NotFound()
         return (http.OK,
                 [('Content-Type', 'text/plain')],
                 [environ['PATH_INFO']])
