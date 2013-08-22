@@ -15,8 +15,23 @@
 # limitations under the License.
 #
 
-"""
+"""\
 A PyPI-style documentation server.
+
+Usage:
+  docserver [--host=HOST] [--port=PORT] [--store=STORE] [--template=TEMPLATE]
+  docserver --help|--version
+
+Option:
+  --help               Show this screen
+  --version            Show version
+  --host=HOST          Hostname or address to bind server to
+                       [default: localhost]
+  --port=PORT          Port to run server on
+                       [default: 8080]
+  --store=STORE        Path to bundle store directory
+                       [default: ~/docstore]
+  --template=TEMPLATE  Path to frontpage template
 """
 
 import cgi
@@ -27,12 +42,18 @@ import mimetypes
 import os
 import os.path
 import re
+import sys
 import time
 import zipfile
 
+import docopt
+import pkg_resources
 import pystache
 import six
 from six.moves import http_client as http
+
+
+__version__ = pkg_resources.get_distribution('docserver').version
 
 
 DEFAULT_STORE = '~/docstore'
@@ -43,70 +64,6 @@ DEFAULT_FRONTPAGE = six.u("""\
 <html><head>
 
     <title>Documentation Bundles</title>
-
-    <style type="text/css" media="all">
-    body {
-        width: 60em;
-        margin: 1em auto;
-        font-family: sans-serif;
-        line-height: 1.5;
-        color: #444;
-    }
-    h1 {
-        margin: 0;
-        border-bottom: 1px solid #888;
-        font-size: 100%;
-    }
-    ul {
-        border-bottom: 1px solid #888;
-        margin: 0;
-        padding: 0;
-        list-style: none;
-    }
-    ul li + li {
-        border-top: 1px solid #DDD;
-    }
-    ul a {
-        display: block;
-        padding: 0.5ex 1ex;
-    }
-    ul a:hover {
-        background: #EEE;
-    }
-    form {
-        width: 36em;
-        margin: 4em auto 1em auto;
-    }
-    fieldset {
-        position: relative;
-        border: solid silver;
-        border-width: 1px 0 0 0;
-        background: linear-gradient(to bottom,
-                                    rgba(  0,   0,   0, 0.10) 0%,
-                                    rgba(  0,   0,   0, 0.00) 100%);
-    }
-    fieldset legend {
-        position: absolute;
-        top: -1.5em;
-        left: 0;
-        font-weight: bold;
-    }
-    form div {
-        position: relative;
-        margin: 1ex 0 1ex 13em;
-    }
-    label strong {
-        position: absolute;
-        left: -13em;
-        width: 12.5em;
-        display: block;
-        text-align: right;
-    }
-    label span.note {
-        display: block;
-        font-size: 80%;
-    }
-    </style>
 
 </head><body>
 
@@ -127,7 +84,6 @@ DEFAULT_FRONTPAGE = six.u("""\
 <input type="hidden" name=":action" value="doc_upload">
 <div><label><strong>Distribution name</strong>
      <input type="text" name="name">
-     <span class="note">Defaults to document bundle archive name</span>
      </label></div>
 <div><label><strong>Document bundle</strong>
      <input type="file" name="content" required="required"
@@ -290,7 +246,7 @@ class DocServer(object):
     A documentation server.
     """
 
-    def __init__(self, store=None):
+    def __init__(self, store=None, template=DEFAULT_FRONTPAGE):
         super(DocServer, self).__init__()
         if store is None:
             store = os.getenv('DOCSERVER_STORE', DEFAULT_STORE)
@@ -298,7 +254,7 @@ class DocServer(object):
         if not os.path.isdir(store):
             raise BadPath('"{0}" not found.'.format(store))
         self.store = store
-        self.frontpage = pystache.parse(DEFAULT_FRONTPAGE)
+        self.frontpage = pystache.parse(template)
 
     def __call__(self, environ, start_response):
         """
@@ -431,16 +387,41 @@ def create_application(global_config=None, **local_conf):
     """
     Create a configured instance of the WSGI application.
     """
-    return DocServer(store=local_conf.get('store'))
+    template_path = local_conf.get('template')
+    if template_path is None:
+        template = DEFAULT_FRONTPAGE
+    else:
+        with open(os.path.realpath(template_path), 'r') as fp:
+            template = unicode(fp.read())
+    return DocServer(store=local_conf.get('store'), template=template)
 
 
-def main():
+def main(argv=sys.argv):
     """
     Run the WSGI application using :mod:`wsgiref`.
     """
+    args = docopt.docopt(__doc__, argv[1:], version=__version__)
+
+    host = args['--host']
+    port = int(args['--port'])
+    store = os.path.realpath(os.path.expanduser(args['--store']))
+    template_path = args['--template']
+
+    if 0 > port > 65535:
+        print >> sys.stderr, 'Bad port: {0}'.format(port)
+        return 1
+
+    try:
+        app = create_application(None, store=store, template=template_path)
+    except BadPath as exc:
+        print >> sys.stderr, exc.message
+        return 1
+
+    print >> sys.stderr, "Serving on http://{0}:{1}/".format(host, port)
     from wsgiref.simple_server import make_server
-    make_server('localhost', 8080, DocServer()).serve_forever()
+    make_server(host, port, app).serve_forever()
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

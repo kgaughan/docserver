@@ -14,7 +14,7 @@ setup(
     test_suite='tests',
     zip_safe=True,
     install_requires=[
-        'passlib',
+        'docopt',
         'pystache',
         'six',
     ],
