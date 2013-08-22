@@ -25,6 +25,7 @@ import glob
 import mimetypes
 import os
 import os.path
+import re
 import time
 import zipfile
 
@@ -206,6 +207,10 @@ def check_if_unmodified(environ, timestamp):
     return last_modified != parsed
 
 
+def scrub_name(name):
+    return '-'.join(re.findall('[a-z0-9]+', name.lower()))
+
+
 class DocServer(object):
 
     def __init__(self, store=None):
@@ -300,6 +305,7 @@ class DocServer(object):
             name = content.filename
             if name.endswith('.zip'):
                 name = name[:-4]
+        name = scrub_name(name)
         if len(name) < 2:
             raise BadRequest('Name must be at least two characters long.')
 
