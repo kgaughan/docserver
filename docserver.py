@@ -74,7 +74,7 @@ DEFAULT_FRONTPAGE = six.u("""\
         background: #EEE;
     }
     form {
-        width: 30em;
+        width: 36em;
         margin: 4em auto 1em auto;
     }
     fieldset {
@@ -93,12 +93,12 @@ DEFAULT_FRONTPAGE = six.u("""\
     }
     form div {
         position: relative;
-        margin: 1ex 0 1ex 10em;
+        margin: 1ex 0 1ex 13em;
     }
     label strong {
         position: absolute;
-        left: -10em;
-        width: 9.5em;
+        left: -13em;
+        width: 12.5em;
         display: block;
         text-align: right;
     }
