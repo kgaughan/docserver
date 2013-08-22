@@ -25,6 +25,7 @@ import glob
 import mimetypes
 import os
 import os.path
+import shutil
 import time
 import zipfile
 
@@ -53,6 +54,19 @@ DEFAULT_FRONTPAGE = six.u("""\
             <li>No entries</li>
             {{/entries}}
         </ul>
+
+        <form method="post" enctype="multipart/form-data" action="">
+        <fieldset>
+            <legend>Documentation upload</legend>
+            <input type="hidden" name=":action" value="doc_upload">
+            <div><label>Distribution name
+                        <input type="text" name="name"></label></div>
+            <div><label>Document bundle
+                        <input type="file" name="content" required="required"
+                            accept=".zip,application/zip,application/octet-stream"></label></div>
+            <div><input type="submit" value="Upload"></div>
+        </fieldset>
+        </form>
     </body>
 </html>
 """)
@@ -97,6 +111,15 @@ class NotFound(HTTPError):
 
     def __init__(self, message=None):
         super(NotFound, self).__init__(http.NOT_FOUND, message)
+
+
+class BadRequest(HTTPError):
+    """
+    Bad request.
+    """
+
+    def __init__(self, message=None):
+        super(NotFound, self).__init__(http.BAD_REQUEST, message)
 
 
 class MovedPermanently(HTTPError):
@@ -241,13 +264,14 @@ class DocServer(object):
         with zipfile.ZipFile(path, 'r') as archive:
             try:
                 info = archive.getinfo(filename)
+                print [filename, info]
             except KeyError:
                 raise NotFound()
             timestamp = time.mktime(info.date_time + (0, 0, 0))
             if check_if_unmodified(environ, timestamp):
                 # Expire 5m from now.
                 raise NotModified(time.time() + 60 * 5)
-            content = archive.read(filename)
+            content = archive.read(info)
 
         return (http.OK,
                 [('Content-Type', mimetype),
@@ -262,9 +286,43 @@ class DocServer(object):
                 [content.encode('utf-8')])
 
     def submit(self, environ):
-        return (http.OK,
-                [('Content-Type', 'text/plain')],
-                [environ['PATH_INFO']])
+        form = parse_form(environ)
+        if form.getvalue(':action') != 'doc_upload':
+            raise BadRequest(":action must be 'doc_upload'")
+        if 'content' not in form:
+            raise BadRequest("No content submitted")
+        content = form['content']
+        if isinstance(content, list):
+            raise BadRequest("Submit only one documentation bundle.")
+        if content.type != 'application/zip':
+            raise BadRequest("Only zip files are acceptable.")
+
+        name = form.getvalue('name', '').strip()
+        if name == '':
+            name = content.filename
+            if name.endswith('.zip'):
+                name = name[:-4]
+        if len(name) < 2:
+            raise BadRequest('Name must be at least two characters long.')
+
+        try:
+            archive = zipfile.ZipFile(content.file)
+            content.file.seek(0)
+            if archive.testzip() is not None:
+                raise BadRequest("Bad Zip file")
+        except zipfile.BadZipfile:
+            raise BadRequest("Bad Zip file")
+
+        catalogue = os.path.join(self.store, name[:2])
+        if not os.path.isdir(catalogue):
+            os.makedirs(catalogue)
+        with open(os.path.join(catalogue, name + '.zip'), 'w') as fp:
+            shutil.copyfileobj(content.file, fp)
+
+        here = add_slash(environ)
+        return (http.SEE_OTHER,
+                [('Content-Type', 'text/plain'), ('Location', here)],
+                [here])
 
     def get_entries(self):
         # The first '4' refers to '/??/', the second to '.zip'
