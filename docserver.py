@@ -183,14 +183,14 @@ def dictify(key, entries):
     return [{key: value} for value in entries]
 
 
-def add_slash(environ):
+def absolute(environ, add_slash=False):
     """
     Reconstruct the URL, and append a trailing slash.
     """
     url = '{0}://{1}{2}'.format(environ['wsgi.url_scheme'],
-                                 environ['HTTP_HOST'],
-                                 environ['PATH_INFO'])
-    if url[-1] != '/':
+                                environ['HTTP_HOST'],
+                                environ['PATH_INFO'])
+    if add_slash and url[-1] != '/':
         url += '/'
     return url
 
@@ -250,7 +250,7 @@ class DocServer(object):
         path = os.path.join(self.store, parts[1][:2], parts[1] + '.zip')
         if len(parts) == 2:
             if os.path.isfile(path):
-                raise MovedPermanently(add_slash(environ))
+                raise MovedPermanently(absolute(environ, add_slash=True))
             raise NotFound()
 
         filename = parts[2]
@@ -319,7 +319,7 @@ class DocServer(object):
         with open(os.path.join(catalogue, name + '.zip'), 'w') as fp:
             shutil.copyfileobj(content.file, fp)
 
-        here = add_slash(environ)
+        here = absolute(environ)
         return (http.SEE_OTHER,
                 [('Content-Type', 'text/plain'), ('Location', here)],
                 [here])
