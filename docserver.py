@@ -241,20 +241,39 @@ def scrub_name(name):
     return '-'.join(re.findall('[a-z0-9]+', name.lower()))
 
 
+def get_store(store):
+    """
+    Get the path of the directory to use for the bundle store.
+    """
+    if store is None:
+        store = os.getenv('DOCSERVER_STORE', DEFAULT_STORE)
+    store = os.path.realpath(os.path.expanduser(store)).rstrip('/')
+    if not os.path.isdir(store):
+        raise BadPath('"{0}" not found.'.format(store))
+    return store
+
+
+def get_template(template):
+    """
+    Read the template to use to render the frontpage.
+    """
+    if template is None:
+        template = os.getenv('DOCSERVER_TEMPLATE')
+    if template is None:
+        return DEFAULT_FRONTPAGE
+    with open(os.path.realpath(template), 'r') as fp:
+        return unicode(fp.read())
+
+
 class DocServer(object):
     """
     A documentation server.
     """
 
-    def __init__(self, store=None, template=DEFAULT_FRONTPAGE):
+    def __init__(self, store=None, template=None):
         super(DocServer, self).__init__()
-        if store is None:
-            store = os.getenv('DOCSERVER_STORE', DEFAULT_STORE)
-        store = os.path.realpath(os.path.expanduser(store)).rstrip('/')
-        if not os.path.isdir(store):
-            raise BadPath('"{0}" not found.'.format(store))
-        self.store = store
-        self.frontpage = pystache.parse(template)
+        self.store = get_store(store)
+        self.frontpage = pystache.parse(get_template(template))
 
     def __call__(self, environ, start_response):
         """
@@ -387,13 +406,7 @@ def create_application(global_config=None, **local_conf):
     """
     Create a configured instance of the WSGI application.
     """
-    template_path = local_conf.get('template')
-    if template_path is None:
-        template = DEFAULT_FRONTPAGE
-    else:
-        with open(os.path.realpath(template_path), 'r') as fp:
-            template = unicode(fp.read())
-    return DocServer(store=local_conf.get('store'), template=template)
+    return DocServer(**local_conf)
 
 
 def main(argv=sys.argv):
@@ -405,14 +418,14 @@ def main(argv=sys.argv):
     host = args['--host']
     port = int(args['--port'])
     store = os.path.realpath(os.path.expanduser(args['--store']))
-    template_path = args['--template']
+    template = args['--template']
 
     if 0 > port > 65535:
         print >> sys.stderr, 'Bad port: {0}'.format(port)
         return 1
 
     try:
-        app = create_application(None, store=store, template=template_path)
+        app = create_application(None, store=store, template=template)
     except BadPath as exc:
         print >> sys.stderr, exc.message
         return 1
