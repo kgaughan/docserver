@@ -388,8 +388,6 @@ class DocServer(object):
         content = form['content']
         if isinstance(content, list):
             raise BadRequest("Submit only one documentation bundle.")
-        if content.type != 'application/zip':
-            raise BadRequest("Only zip files are acceptable.")
 
         name = form.getvalue('name', '').strip()
         if name == '':
