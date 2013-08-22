@@ -20,6 +20,7 @@ A PyPI-style documentation server.
 """
 
 import cgi
+import contextlib
 import email.utils
 import glob
 import mimetypes
@@ -350,7 +351,7 @@ class DocServer(object):
         if mimetype is None:
             mimetype = 'application/octet-stream'
 
-        with zipfile.ZipFile(path, 'r') as archive:
+        with contextlib.closing(zipfile.ZipFile(path, 'r')) as archive:
             try:
                 info = archive.getinfo(filename)
             except KeyError:
