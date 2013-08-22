@@ -47,7 +47,7 @@ DEFAULT_FRONTPAGE = six.u("""\
         <h1>Documentation</h1>
         <ul>
             {{#entries}}
-            <li><a href="{{name}}/">{{name}}</a></li>
+            <li><a href="{{.}}/">{{.}}</a></li>
             {{/entries}}
 
             {{^entries}}
@@ -185,13 +185,6 @@ def parse_form(environ):
         environ=environ)
 
 
-def dictify(key, entries):
-    """
-    Convert a list of scalars to a list of dicts.
-    """
-    return [{key: value} for value in entries]
-
-
 def absolute(environ, add_slash=False):
     """
     Reconstruct the URL, and append a trailing slash.
@@ -309,8 +302,7 @@ class DocServer(object):
         """
         List documentation bundles.
         """
-        entries = dictify('name', self.get_entries())
-        content = pystache.render(self.frontpage, entries=entries)
+        content = pystache.render(self.frontpage, entries=self.get_entries())
         return (http.OK,
                 [('Content-Type', 'text/html; charset=utf-8')],
                 [content.encode('utf-8')])
