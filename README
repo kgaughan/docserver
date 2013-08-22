@@ -11,7 +11,38 @@
 Installation
 ============
 
-TODO
+To install from PyPI::
+
+    $ pip install docserver
+
+You can use docserver straight out of the box by running the module::
+
+    $ python -m docserver
+
+And to show the help::
+
+    $ python -m docserver --help
+
+The WSGI app itself is exposed as :mod:`docserver.DocServer`. If you want to
+use a bundle store path or frontpage template other than the default, you can
+set the environment variables ``DOCSERVER_STORE`` and ``DOCSERVER_TEMPLATE``
+respectively.
+
+docserver plays nice with Paste. Here's an example paste configuration::
+
+    [composite:main]
+    use = egg:Paste#urlmap
+    / = docserver
+
+    [app:docserver]
+    use = egg:docserver
+    ; Set 'store' to configure a custom bundle store.
+    ; Set 'template' to configure a custom frontpage template.
+
+    [server:main]
+    use = egg:Paste#http
+    host = 127.0.0.1
+    port = 8080
 
 Testing
 =======
@@ -51,3 +82,4 @@ Thus the documentation for the *dbkit* package would be stored as
 
 .. _PyPI: https://pypi.python.org/
 .. _Sphinx-PyPI-upload: https://bitbucket.org/jezdez/sphinx-pypi-upload/
+.. _Paste: http://pythonpaste.org/
