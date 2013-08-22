@@ -119,7 +119,7 @@ class BadRequest(HTTPError):
     """
 
     def __init__(self, message=None):
-        super(NotFound, self).__init__(http.BAD_REQUEST, message)
+        super(BadRequest, self).__init__(http.BAD_REQUEST, message)
 
 
 class MovedPermanently(HTTPError):
@@ -204,7 +204,7 @@ def check_if_unmodified(environ, timestamp):
     if last_modified is None:
         return False
     parsed = email.utils.parsedate(last_modified)
-    return last_modified != parsed
+    return timestamp != parsed
 
 
 def scrub_name(name):
