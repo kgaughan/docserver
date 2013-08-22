@@ -39,36 +39,104 @@ DEFAULT_STORE = '~/docstore'
 
 DEFAULT_FRONTPAGE = six.u("""\
 <!DOCTYPE html>
-<html>
-    <head>
-        <title>Documentation</title>
-    </head>
-    <body>
-        <h1>Documentation</h1>
-        <ul>
-            {{#entries}}
-            <li><a href="{{.}}/">{{.}}</a></li>
-            {{/entries}}
+<html><head>
 
-            {{^entries}}
-            <li>No entries</li>
-            {{/entries}}
-        </ul>
+    <title>Documentation Bundles</title>
 
-        <form method="post" enctype="multipart/form-data" action="">
-        <fieldset>
-            <legend>Documentation upload</legend>
-            <input type="hidden" name=":action" value="doc_upload">
-            <div><label>Distribution name
-                        <input type="text" name="name"></label></div>
-            <div><label>Document bundle
-                        <input type="file" name="content" required="required"
-                            accept=".zip,application/zip,application/octet-stream"></label></div>
-            <div><input type="submit" value="Upload"></div>
-        </fieldset>
-        </form>
-    </body>
-</html>
+    <style type="text/css" media="all">
+    body {
+        width: 60em;
+        margin: 1em auto;
+        font-family: sans-serif;
+        line-height: 1.5;
+        color: #444;
+    }
+    h1 {
+        margin: 0;
+        border-bottom: 1px solid #888;
+        font-size: 100%;
+    }
+    ul {
+        border-bottom: 1px solid #888;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    ul li + li {
+        border-top: 1px solid #DDD;
+    }
+    ul a {
+        display: block;
+        padding: 0.5ex 1ex;
+    }
+    ul a:hover {
+        background: #EEE;
+    }
+    form {
+        width: 30em;
+        margin: 4em auto 1em auto;
+    }
+    fieldset {
+        position: relative;
+        border: solid silver;
+        border-width: 1px 0 0 0;
+        background: linear-gradient(to bottom,
+                                    rgba(  0,   0,   0, 0.10) 0%,
+                                    rgba(  0,   0,   0, 0.00) 100%);
+    }
+    fieldset legend {
+        position: absolute;
+        top: -1.5em;
+        left: 0;
+        font-weight: bold;
+    }
+    form div {
+        position: relative;
+        margin: 1ex 0 1ex 10em;
+    }
+    label strong {
+        position: absolute;
+        left: -10em;
+        width: 9.5em;
+        display: block;
+        text-align: right;
+    }
+    label span.note {
+        display: block;
+        font-size: 80%;
+    }
+    </style>
+
+</head><body>
+
+<h1>Documentation Bundles</h1>
+
+<ul>
+{{#entries}}
+<li><a href="{{.}}/">{{.}}</a></li>
+{{/entries}}
+{{^entries}}
+<li>No entries</li>
+{{/entries}}
+</ul>
+
+<form method="post" enctype="multipart/form-data" action="">
+<fieldset>
+<legend>Documentation upload</legend>
+<input type="hidden" name=":action" value="doc_upload">
+<div><label><strong>Distribution name</strong>
+     <input type="text" name="name">
+     <span class="note">Defaults to document bundle archive name</span>
+     </label></div>
+<div><label><strong>Document bundle</strong>
+     <input type="file" name="content" required="required"
+         accept=".zip,application/zip,application/octet-stream">
+     </label></div>
+<div><input type="submit" value="Upload"></div>
+</fieldset>
+</form>
+
+</body></html>
 """)
 
 
