@@ -165,11 +165,17 @@ def make_status_line(code):
 
 
 def require_method(environ, allowed=()):
+    """
+    Require that the request method is allowed.
+    """
     if environ['REQUEST_METHOD'] not in allowed:
         raise MethodNotAllowed(allowed)
 
 
 def parse_form(environ):
+    """
+    Parse the submitted request.
+    """
     try:
         request_size = int(environ.get('CONTENT_LENGTH', 0))
     except ValueError:
@@ -180,6 +186,9 @@ def parse_form(environ):
 
 
 def dictify(key, entries):
+    """
+    Convert a list of scalars to a list of dicts.
+    """
     return [{key: value} for value in entries]
 
 
@@ -208,10 +217,16 @@ def check_if_unmodified(environ, timestamp):
 
 
 def scrub_name(name):
+    """
+    Clean up a documentation distribution's name.
+    """
     return '-'.join(re.findall('[a-z0-9]+', name.lower()))
 
 
 class DocServer(object):
+    """
+    A documentation server.
+    """
 
     def __init__(self, store=None):
         super(DocServer, self).__init__()
@@ -224,6 +239,9 @@ class DocServer(object):
         self.frontpage = pystache.parse(DEFAULT_FRONTPAGE)
 
     def __call__(self, environ, start_response):
+        """
+        Request convert the WSGI request to a more convenient format.
+        """
         try:
             code, headers, content = self.run(environ)
             start_response(make_status_line(code), headers)
@@ -240,6 +258,9 @@ class DocServer(object):
             return content
 
     def run(self, environ):
+        """
+        Dispatch request.
+        """
         if environ['PATH_INFO'] != '/':
             require_method(environ, ('GET', 'HEAD'))
             return self.display(environ)
@@ -250,6 +271,9 @@ class DocServer(object):
         raise MethodNotAllowed(('GET', 'HEAD', 'POST'))
 
     def display(self, environ):
+        """
+        Display a file from a documentation bundle.
+        """
         parts = environ['PATH_INFO'].split('/', 2)
         path = os.path.join(self.store, parts[1][:2], parts[1] + '.zip')
         if len(parts) == 2:
@@ -282,6 +306,9 @@ class DocServer(object):
                 [content])
 
     def contents(self, environ):
+        """
+        List documentation bundles.
+        """
         entries = dictify('name', self.get_entries())
         content = pystache.render(self.frontpage, entries=entries)
         return (http.OK,
@@ -289,6 +316,9 @@ class DocServer(object):
                 [content.encode('utf-8')])
 
     def submit(self, environ):
+        """
+        Process a documentation bundle submission.
+        """
         form = parse_form(environ)
         if form.getvalue(':action') != 'doc_upload':
             raise BadRequest(":action must be 'doc_upload'")
@@ -328,6 +358,9 @@ class DocServer(object):
                 [here])
 
     def get_entries(self):
+        """
+        Get a list of documentation bundles.
+        """
         # The first '4' refers to '/??/', the second to '.zip'
         return sorted(entry[len(self.store) + 4:-4]
                       for entry in glob.iglob(os.path.join(self.store,
