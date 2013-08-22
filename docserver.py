@@ -164,9 +164,12 @@ def add_slash(environ):
     """
     Reconstruct the URL, and append a trailing slash.
     """
-    return '{0}://{1}{2}/'.format(environ['wsgi.url_scheme'],
-                                  environ['HTTP_HOST'],
-                                  environ['PATH_INFO'])
+    url = '{0}://{1}{2}'.format(environ['wsgi.url_scheme'],
+                                 environ['HTTP_HOST'],
+                                 environ['PATH_INFO'])
+    if url[-1] != '/':
+        url += '/'
+    return url
 
 
 def check_if_unmodified(environ, timestamp):
@@ -228,7 +231,7 @@ class DocServer(object):
             raise NotFound()
 
         filename = parts[2]
-        if filename == '' or filename[-1:] == '/':
+        if filename == '' or filename[-1] == '/':
             filename += 'index.html'
 
         mimetype, _ = mimetypes.guess_type(filename)
