@@ -25,7 +25,6 @@ import glob
 import mimetypes
 import os
 import os.path
-import shutil
 import time
 import zipfile
 
@@ -305,8 +304,7 @@ class DocServer(object):
             raise BadRequest('Name must be at least two characters long.')
 
         try:
-            archive = zipfile.ZipFile(content.file)
-            content.file.seek(0)
+            archive = zipfile.ZipFile(six.BytesIO(content.value))
             if archive.testzip() is not None:
                 raise BadRequest("Bad Zip file")
         except zipfile.BadZipfile:
@@ -316,7 +314,7 @@ class DocServer(object):
         if not os.path.isdir(catalogue):
             os.makedirs(catalogue)
         with open(os.path.join(catalogue, name + '.zip'), 'w') as fp:
-            shutil.copyfileobj(content.file, fp)
+            fp.write(content.value)
 
         here = absolute(environ)
         return (http.SEE_OTHER,
