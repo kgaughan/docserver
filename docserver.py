@@ -38,6 +38,7 @@ import cgi
 import contextlib
 import email.utils
 import glob
+import logging
 import mimetypes
 import os
 import os.path
@@ -54,6 +55,9 @@ from six.moves import http_client as http
 
 
 __version__ = pkg_resources.get_distribution('docserver').version
+
+
+logger = logging.getLogger('docserver')
 
 
 DEFAULT_STORE = '~/docstore'
@@ -386,6 +390,8 @@ class DocServer(object):
         with open(os.path.join(catalogue, name + '.zip'), 'w') as fp:
             fp.write(content.value)
 
+        logger.info('Upload [%s] %s', environ['REMOTE_HOST'], name)
+
         here = absolute(environ)
         return (http.SEE_OTHER,
                 [('Content-Type', 'text/plain'), ('Location', here)],
@@ -429,6 +435,8 @@ def main(argv=sys.argv):
     except BadPath as exc:
         print >> sys.stderr, exc.message
         return 1
+
+    logging.basicConfig()
 
     print >> sys.stderr, "Serving on http://{0}:{1}/".format(host, port)
     from wsgiref.simple_server import make_server
