@@ -264,7 +264,6 @@ class DocServer(object):
         with zipfile.ZipFile(path, 'r') as archive:
             try:
                 info = archive.getinfo(filename)
-                print [filename, info]
             except KeyError:
                 raise NotFound()
             timestamp = time.mktime(info.date_time + (0, 0, 0))
