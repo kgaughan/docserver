@@ -98,6 +98,11 @@ DEFAULT_FRONTPAGE = six.u("""\
 </fieldset>
 </form>
 
+<address>
+Powered by
+<a href="https://github.com/kgaughan/docserver/">docserver</a>/{{version}}
+</address>
+
 </body></html>
 """)
 
@@ -372,7 +377,9 @@ class DocServer(object):
         """
         List documentation bundles.
         """
-        content = pystache.render(self.frontpage, entries=self.get_entries())
+        content = pystache.render(self.frontpage,
+                                  entries=self.get_entries(),
+                                  version=__version__)
         return (http.OK,
                 [('Content-Type', 'text/html; charset=utf-8')],
                 [content.encode('utf-8')])
