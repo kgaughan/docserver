@@ -438,7 +438,11 @@ def main(argv=sys.argv):
 
     logging.basicConfig()
 
-    print >> sys.stderr, "Serving on http://{0}:{1}/".format(host, port)
+    from wsgiref.util import guess_scheme
+    scheme = guess_scheme(os.environ)
+    print >> sys.stderr, "Serving on {0}://{1}:{2}/".format(scheme,
+                                                            host, port)
+
     from wsgiref.simple_server import make_server
     make_server(host, port, app).serve_forever()
     return 0
