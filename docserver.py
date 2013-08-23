@@ -54,6 +54,7 @@ import six
 from six.moves import http_client as http
 
 
+# pylint: disable-msg=E1103
 __version__ = pkg_resources.get_distribution('docserver').version
 
 
@@ -366,6 +367,7 @@ class DocServer(object):
                  ('Last-Modified', email.utils.formatdate(timestamp))],
                 [content])
 
+    # pylint: disable-msg=W0613
     def contents(self, environ):
         """
         List documentation bundles.
@@ -447,6 +449,7 @@ def create_application(global_config=None, **local_conf):
     return DocServer(**local_conf)
 
 
+# pylint: disable-msg=W0102
 def main(argv=sys.argv):
     """
     Run the WSGI application using :mod:`wsgiref`.
