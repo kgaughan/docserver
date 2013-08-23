@@ -397,6 +397,12 @@ class DocServer(object):
 
         logger.info('Upload [%s] %s', environ['REMOTE_HOST'], name)
 
+        # For 'python setup.py upload_docs' to work properly without
+        # reporting a spurious error. It's the least worst way of checking
+        # if the upload is happening via CLI or a form.
+        if 'HTTP_REFERER' not in environ:
+            return (http.OK, [('Content-Type', 'text/plain')], [''])
+
         here = absolute(environ)
         return (http.SEE_OTHER,
                 [('Content-Type', 'text/plain'), ('Location', here)],
