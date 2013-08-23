@@ -330,16 +330,21 @@ class DocServer(object):
         if mimetype is None:
             mimetype = 'application/octet-stream'
 
-        with contextlib.closing(zipfile.ZipFile(path, 'r')) as archive:
-            try:
-                info = archive.getinfo(filename)
-            except KeyError:
-                raise NotFound()
-            timestamp = time.mktime(info.date_time + (0, 0, 0))
-            if check_if_unmodified(environ, timestamp):
-                # Expire 5m from now.
-                raise NotModified(time.time() + 60 * 5)
-            content = archive.read(info)
+        try:
+            with contextlib.closing(zipfile.ZipFile(path, 'r')) as archive:
+                try:
+                    info = archive.getinfo(filename)
+                except KeyError:
+                    # No such file in the bundle.
+                    raise NotFound()
+                timestamp = time.mktime(info.date_time + (0, 0, 0))
+                if check_if_unmodified(environ, timestamp):
+                    # Expire 5m from now.
+                    raise NotModified(time.time() + 60 * 5)
+                content = archive.read(info)
+        except IOError:
+            # No such bundle.
+            raise NotFound()
 
         return (http.OK,
                 [('Content-Type', mimetype),
