@@ -100,6 +100,20 @@ DEFAULT_FRONTPAGE = six.u("""\
 </body></html>
 """)
 
+POST_REDIRECT = six.u("""\
+<!DOCTYPE html>
+<html><head>
+
+    <title>See: {{url}}</title>
+    <meta http-equiv="refresh" content="1; url={{url}}">
+
+</head><body>
+
+<p>See: <a href="{{url}}">{{url}}</a></p>
+
+</body></html>
+""")
+
 
 class HTTPError(Exception):
     """
@@ -278,6 +292,7 @@ class DocServer(object):
         super(DocServer, self).__init__()
         self.store = get_store(store)
         self.frontpage = pystache.parse(get_template(template))
+        self.refresh = pystache.parse(POST_REDIRECT)
 
     def __call__(self, environ, start_response):
         """
@@ -397,13 +412,19 @@ class DocServer(object):
 
         logger.info('Upload [%s] %s', environ['REMOTE_HOST'], name)
 
+        here = absolute(environ)
+
         # For 'python setup.py upload_docs' to work properly without
         # reporting a spurious error. It's the least worst way of checking
         # if the upload is happening via CLI or a form.
         if 'HTTP_REFERER' not in environ:
-            return (http.OK, [('Content-Type', 'text/plain')], [''])
+            bundle = here + name + '/'
+            content = pystache.render(self.refresh, url=bundle)
+            return (http.OK,
+                    [('Content-Type', 'text/html; charset=utf-8'),
+                     ('Location', bundle)],
+                    [content.encode('utf-8')])
 
-        here = absolute(environ)
         return (http.SEE_OTHER,
                 [('Content-Type', 'text/plain'), ('Location', here)],
                 [here])
