@@ -44,6 +44,14 @@ docserver plays nice with Paste. Here's an example paste configuration::
     host = 127.0.0.1
     port = 8080
 
+Reskinning
+==========
+
+If you want to use a skin other than the ugly default skin, there's a
+marginally prettier one at ``extra/frontpage.html`` in the package.
+
+The template engine used is pystache_.
+
 Testing
 =======
 
@@ -83,3 +91,4 @@ Thus the documentation for the *dbkit* package would be stored as
 .. _PyPI: https://pypi.python.org/
 .. _Sphinx-PyPI-upload: https://bitbucket.org/jezdez/sphinx-pypi-upload/
 .. _Paste: http://pythonpaste.org/
+.. _pystache: https://pypi.python.org/pypi/pystache
