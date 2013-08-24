@@ -1,2 +1,1 @@
 include LICENSE tests.py
-recursive-include extra *.html
