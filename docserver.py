@@ -550,7 +550,7 @@ def main(argv=sys.argv):
         print >> sys.stderr, exc.message
         return 1
 
-    logging.basicConfig()
+    logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 
     from wsgiref.util import guess_scheme
     scheme = guess_scheme(os.environ)
