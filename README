@@ -1,6 +1,6 @@
-========================================================
- docserver - a documentation server in the vein of PyPI
-========================================================
+
+docserver - a documentation server in the vein of PyPI
+======================================================
 
 :Author: Keith Gaughan
 
@@ -8,8 +8,9 @@
 
 .. contents::
 
+
 Installation
-============
+------------
 
 To install from PyPI::
 
@@ -23,12 +24,12 @@ And to show the help::
 
     $ python -m docserver --help
 
-The WSGI app itself is exposed as :mod:`docserver.DocServer`. If you want to
-use a bundle store path or frontpage template other than the default, you can
-set the environment variables ``DOCSERVER_STORE`` and ``DOCSERVER_TEMPLATE``
+The WSGI app itself is exposed as `docserver.DocServer`. If you want to use a
+bundle store path or frontpage template other than the default, you can set
+the environment variables ``DOCSERVER_STORE`` and ``DOCSERVER_TEMPLATE``
 respectively.
 
-docserver plays nice with Paste. Here's an example paste configuration::
+docserver plays nice with Paste_. Here's an example paste configuration::
 
     [composite:main]
     use = egg:Paste#urlmap
@@ -44,51 +45,23 @@ docserver plays nice with Paste. Here's an example paste configuration::
     host = 127.0.0.1
     port = 8080
 
+
 Reskinning
-==========
+----------
 
 If you want to use a skin other than the ugly default skin, there's a
 marginally prettier one at ``extra/frontpage.html`` in the package.
 
 The template engine used is pystache_.
 
+
 Testing
-=======
+-------
 
 Use the following to run the test suite::
 
     $ python setup.py test
 
-Internals
-=========
 
-Submission
-----------
-
-Uploads work in the same fashion supported by PyPI_ and Sphinx-PyPI-upload_.
-You submit documentation by performing a POST request with the mimetype
-``multipart/form-data``. There are three fields: ``:action``, which has the
-value ``doc_upload``; ``name``, which contains the name of the package; and
-``content``, which contains a Zip file of the documentation.
-
-Name normalisation
-------------------
-
-Names are converted to lowercase and any underscores and fullstops are
-converted to hyphens. Runs of multiple hyphen are collapsed down to single
-hyphens. Leading and trailing hyphens are rejected. After normalisation,
-any names that are not at least two characters long and contain characters
-other than alphanumerics and hyphens are rejected.
-
-Storage
--------
-
-Zip files are stored as is in a shallow directory hierarchy where the name of
-a directory is based on the first two characters of the packages it contains.
-Thus the documentation for the *dbkit* package would be stored as
-``db/dbkit.zip``.
-
-.. _PyPI: https://pypi.python.org/
-.. _Sphinx-PyPI-upload: https://bitbucket.org/jezdez/sphinx-pypi-upload/
 .. _Paste: http://pythonpaste.org/
 .. _pystache: https://pypi.python.org/pypi/pystache
