@@ -38,6 +38,7 @@ Option:
 
 import cgi
 import contextlib
+import datetime
 import email.utils
 import glob
 import logging
@@ -50,6 +51,7 @@ import time
 import zipfile
 
 import docopt
+import humanize
 import pkg_resources
 import pystache
 import six
@@ -98,15 +100,21 @@ DEFAULT_FRONTPAGE = six.u("""\
         padding: 0;
         list-style: none;
     }
+    ul li {
+        padding: 0.5ex 1ex;
+    }
     ul li + li {
         border-top: 1px solid #DDD;
     }
     ul a {
         display: block;
-        padding: 0.5ex 1ex;
     }
-    ul a:hover {
+    ul li:hover {
         background: #EEE;
+    }
+    .stats {
+        font-size: 80%;
+        display: block;
     }
     form {
         width: 36em;
@@ -149,7 +157,8 @@ DEFAULT_FRONTPAGE = six.u("""\
 
 <ul>
 {{#entries}}
-<li><a href="{{.}}/">{{.}}</a></li>
+<li><a href="{{name}}/">{{name}}</a>
+    <span class="stats">Size: {{size}}; Modified: {{modified}}</span></li>
 {{/entries}}
 {{^entries}}
 <li>No entries</li>
@@ -516,10 +525,16 @@ class DocServer(object):
         """
         Get a list of documentation bundles.
         """
-        # The first '4' refers to '/??/', the second to '.zip'
-        return sorted(entry[len(self.store) + 4:-4]
-                      for entry in glob.iglob(os.path.join(self.store,
-                                                           '??/*.zip')))
+        pattern = os.path.join(self.store, '??/*.zip')
+        for entry in sorted(glob.iglob(pattern)):
+            stat = os.stat(entry)
+            modified = datetime.datetime.fromtimestamp(stat.st_mtime)
+            return {
+                # The first '4' refers to '/??/', the second to '.zip'
+                'name': entry[len(self.store) + 4:-4],
+                'modified': humanize.naturaltime(modified),
+                'size': humanize.naturalsize(stat.st_size, binary=True),
+            }
 
 
 # pylint: disable-msg=W0613

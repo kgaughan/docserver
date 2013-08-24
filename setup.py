@@ -16,6 +16,7 @@ setup(
     zip_safe=True,
     install_requires=[
         'docopt',
+        'humanize',
         'pystache',
         'six',
     ],
