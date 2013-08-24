@@ -20,6 +20,7 @@ A PyPI-style documentation server.
 
 Usage:
   docserver [--host=HOST] [--port=PORT] [--store=STORE] [--template=TEMPLATE]
+  docserver --print-template
   docserver --help|--version
 
 Option:
@@ -32,6 +33,7 @@ Option:
   --store=STORE        Path to bundle store directory
                        [default: ~/docstore]
   --template=TEMPLATE  Path to frontpage template
+  --print-template     Print out the default frontpage template
 """
 
 import cgi
@@ -534,6 +536,10 @@ def main(argv=sys.argv):
     Run the WSGI application using :mod:`wsgiref`.
     """
     args = docopt.docopt(__doc__, argv[1:], version=__version__)
+
+    if args['--print-template']:
+        print DEFAULT_FRONTPAGE
+        return 0
 
     host = args['--host']
     port = int(args['--port'])
