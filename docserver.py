@@ -216,7 +216,7 @@ class HTTPError(Exception):
         self.code = code
 
     # pylint: disable-msg=R0201
-    def headers(self):
+    def headers(self):  # pragma: no cover
         """
         Additional headers to be sent.
         """
@@ -297,7 +297,7 @@ def require_method(environ, allowed=()):
         raise MethodNotAllowed(allowed)
 
 
-def parse_form(environ):
+def parse_form(environ):  # pragma: no cover
     """
     Parse the submitted request.
     """
