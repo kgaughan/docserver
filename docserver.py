@@ -282,13 +282,6 @@ class MethodNotAllowed(HTTPError):
         return [('Allow', ', '.join(self.allowed))]
 
 
-class BadPath(Exception):
-    """
-    Bad path.
-    """
-    pass
-
-
 def make_status_line(code):
     """
     Create a HTTP status line.
@@ -341,6 +334,38 @@ def check_if_unmodified(environ, timestamp):
     return timestamp != parsed
 
 
+class App(object):
+    """
+    Application base class.
+    """
+
+    def __call__(self, environ, start_response):
+        """
+        Request convert the WSGI request to a more convenient format.
+        """
+        try:
+            code, headers, content = self.run(environ)
+            start_response(make_status_line(code), headers)
+            return content
+        except HTTPError as exc:
+            headers = exc.headers()
+            if exc.code in (100, 101, 204, 304):
+                # These must not send message bodies.
+                content = []
+            else:
+                headers.append(('Content-Type', 'text/plain'))
+                content = [exc.message]
+            start_response(make_status_line(exc.code), headers)
+            return content
+
+
+class BadPath(Exception):
+    """
+    Bad path.
+    """
+    pass
+
+
 def scrub_name(name):
     """
     Clean up a documentation distribution's name.
@@ -372,7 +397,7 @@ def get_template(template):
         return unicode(fp.read())
 
 
-class DocServer(object):
+class DocServer(App):
     """
     A documentation server.
     """
@@ -382,25 +407,6 @@ class DocServer(object):
         self.store = get_store(store)
         self.frontpage = pystache.parse(get_template(template))
         self.refresh = pystache.parse(POST_REDIRECT)
-
-    def __call__(self, environ, start_response):
-        """
-        Request convert the WSGI request to a more convenient format.
-        """
-        try:
-            code, headers, content = self.run(environ)
-            start_response(make_status_line(code), headers)
-            return content
-        except HTTPError as exc:
-            headers = exc.headers()
-            if exc.code in (100, 101, 204, 304):
-                # These must not send message bodies.
-                content = []
-            else:
-                headers.append(('Content-Type', 'text/plain'))
-                content = [exc.message]
-            start_response(make_status_line(exc.code), headers)
-            return content
 
     def run(self, environ):
         """
