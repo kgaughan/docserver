@@ -9,6 +9,7 @@ setup(
     description='Lightweight, user-friendly PyPI-style documentation server',
     long_description=open('README', 'r').read(),
     url='https://github.com/kgaughan/docserver',
+    keywords='wsgi sphinx documentation server',
     license='Apache Licence v2.0',
     py_modules=['docserver'],
     test_suite='tests',
