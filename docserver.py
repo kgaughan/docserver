@@ -553,7 +553,7 @@ def main(argv=sys.argv):
     args = docopt.docopt(__doc__, argv[1:], version=__version__)
 
     if args['--print-template']:
-        print DEFAULT_FRONTPAGE
+        six.print_(DEFAULT_FRONTPAGE)
         return 0
 
     host = args['--host']
@@ -562,21 +562,21 @@ def main(argv=sys.argv):
     template = args['--template']
 
     if 0 > port > 65535:
-        print >> sys.stderr, 'Bad port: {0}'.format(port)
+        six.print_('Bad port: {0}'.format(port), file=sys.stderr)
         return 1
 
     try:
         app = create_application(None, store=store, template=template)
     except BadPath as exc:
-        print >> sys.stderr, exc.message
+        six.print_(exc.message, file=sys.stderr)
         return 1
 
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 
     from wsgiref.util import guess_scheme
     scheme = guess_scheme(os.environ)
-    print >> sys.stderr, "Serving on {0}://{1}:{2}/".format(scheme,
-                                                            host, port)
+    six.print_("Serving on {0}://{1}:{2}/".format(scheme, host, port),
+               file=sys.stderr)
 
     from wsgiref.simple_server import make_server
     make_server(host, port, app).serve_forever()
