@@ -20,12 +20,6 @@ setup(
         'pystache',
         'six',
     ],
-    extras_require={
-        'testing': [
-            'coverage',
-            'tox',
-        ],
-    },
 
     entry_points={
         'paste.app_factory': (

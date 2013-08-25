@@ -64,6 +64,19 @@ Use the following to run the test suite::
 
     $ python setup.py test
 
+If you're considering contributing back, make sure you run the testsuite
+against all the supported versions of Python. You can use tox_ to do this::
+
+    $ tox
+
+Or with detox_::
+
+    $ detox
+
+To install additional versions of Python for testing, I recommend pyenv_.
 
 .. _Paste: http://pythonpaste.org/
 .. _pystache: https://pypi.python.org/pypi/pystache
+.. _tox: http://testrun.org/
+.. _detox: https://pypi.python.org/pypi/detox
+.. _pyenv: https://github.com/yyuu/pyenv/
