@@ -106,7 +106,7 @@ DEFAULT_FRONTPAGE = six.u("""\
     ul li + li {
         border-top: 1px solid #DDD;
     }
-    ul a {
+    ul a.manual {
         display: block;
     }
     ul li:hover {
@@ -115,6 +115,16 @@ DEFAULT_FRONTPAGE = six.u("""\
     .stats {
         font-size: 80%;
         display: block;
+    }
+    a.download {
+        background: #888;
+        color: #EEE;
+        text-decoration: none;
+        padding: 0.125ex 0.75ex;
+        border-radius: 1ex;
+    }
+    a.download:hover {
+        background: #444;
     }
     form {
         width: 36em;
@@ -157,8 +167,11 @@ DEFAULT_FRONTPAGE = six.u("""\
 
 <ul>
 {{#entries}}
-<li><a href="{{name}}/">{{name}}</a>
-    <span class="stats">Size: {{size}}; Modified: {{modified}}</span></li>
+<li><a class="manual" href="{{name}}/">{{name}}</a>
+    <span class="stats">
+    <a class="download" href="{{name}}.zip">&#8595; Download</a>
+    Size: {{size}}; Modified: {{modified}}
+    </span></li>
 {{/entries}}
 {{^entries}}
 <li>No entries</li>
@@ -412,6 +425,9 @@ class DocServer(App):
         """
         Dispatch request.
         """
+        if re.match(r'/[a-z0-9.\-]+\.zip$', environ['PATH_INFO'], re.I):
+            require_method(environ, ('GET', 'HEAD'))
+            return self.download(environ)
         if environ['PATH_INFO'] != '/':
             require_method(environ, ('GET', 'HEAD'))
             return self.display(environ)
@@ -472,6 +488,16 @@ class DocServer(App):
         return (http.OK,
                 [('Content-Type', 'text/html; charset=utf-8')],
                 [content.encode('utf-8')])
+
+    def download(self, environ):
+        parts = environ['PATH_INFO'].split('/', 2)
+        path = os.path.join(self.store, parts[1][:2], parts[1])
+        if not os.path.isfile(path):
+            raise NotFound()
+        with open(path, 'r') as fh:
+            return (http.OK,
+                    [('Content-Type', 'application/zip')],
+                    [fh.read()])
 
     def submit(self, environ):
         """
