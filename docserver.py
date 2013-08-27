@@ -483,7 +483,7 @@ class DocServer(App):
         List documentation bundles.
         """
         content = pystache.render(self.frontpage,
-                                  entries=self.get_entries(),
+                                  entries=list(self.get_entries()),
                                   version=__version__)
         return (http.OK,
                 [('Content-Type', 'text/html; charset=utf-8')],
@@ -561,7 +561,7 @@ class DocServer(App):
         for entry in sorted(glob.iglob(pattern)):
             stat = os.stat(entry)
             modified = datetime.datetime.fromtimestamp(stat.st_mtime)
-            return {
+            yield {
                 # The first '4' refers to '/??/', the second to '.zip'
                 'name': entry[len(self.store) + 4:-4],
                 'modified': humanize.naturaltime(modified),
