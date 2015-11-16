@@ -74,11 +74,14 @@ DEFAULT_FRONTPAGE = six.u("""\
 
     <title>Documentation Bundles</title>
 
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,400italic" rel="stylesheet" type="text/css" crossorigin="anonymous">
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css" rel="stylesheet" type="text/css" integrity="sha256-k2/8zcNbxVIh5mnQ52A0r3a6jAgMGxFJFE2707UxGCk= sha512-ZV9KawG2Legkwp3nAlxLIVFudTauWuBpC10uEafMHYL0Sarrz5A7G79kXh5+5+woxQ5HM559XX2UZjMJ36Wplg==" crossorigin="anonymous">
+
     <style type="text/css" media="all">
     body {
         width: 60em;
         margin: 1em auto;
-        font-family: sans-serif;
+        font-family: "Open Sans", "Helvetica Neue", Arial, sans-serif;
         line-height: 1.5;
         color: #444;
     }
@@ -86,7 +89,7 @@ DEFAULT_FRONTPAGE = six.u("""\
         margin-top: 1em;
         border-top: 1px solid #888;
         font-size: 80%;
-        padding: 0.625ex 1.25ex;
+        padding: 0.625ex 0;
         text-align: right;
     }
     h1 {
@@ -102,12 +105,17 @@ DEFAULT_FRONTPAGE = six.u("""\
     }
     ul li {
         padding: 0.5ex 1ex;
+        transition-duration: 0.2s;
     }
     ul li + li {
         border-top: 1px solid #DDD;
     }
     ul a.manual {
         display: block;
+        color: inherit;
+        font-weight: bold;
+        text-decoration: none;
+        font-size: 125%;
     }
     ul li:hover {
         background: #EEE;
@@ -115,16 +123,45 @@ DEFAULT_FRONTPAGE = six.u("""\
     .stats {
         font-size: 80%;
         display: block;
+        padding: 0 0 1ex 0;
+        color: #888;
     }
-    a.download {
-        background: #888;
+    a.download,
+    form input[type=submit] {
+        background: #4479ba;
         color: #EEE;
         text-decoration: none;
-        padding: 0.125ex 0.75ex;
-        border-radius: 1ex;
+        font: inherit;
+        font-weight: bold;
+        padding: 0.375ex 1ex 0.25ex;
+        border-radius: 0.5ex;
+        border: 1px solid #20538d;
+        box-shadow: 1px 1px 0 rgba(255, 255, 255, 0.3) inset,
+                    1px 1px 0 rgba(0, 0, 0, 0.2);
+        text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.4);
+        transition-duration: 0.2s;
+        user-select: none;
     }
-    a.download:hover {
-        background: #444;
+    a.download:hover,
+    form input[type=submit]:hover {
+        border: solid 1px #2A4E77;
+        background: #356094;
+    }
+    a.download:active,
+    form input[type=submit]:active {
+        box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.6);
+        background: #2E5481;
+        border: solid 1px #203E5F;
+    }
+    a.download {
+        float: right;
+    }
+    form input[type=submit] {
+        font-size: 80%;
+    }
+    form input[type=submit]::-moz-focus-inner {
+        border: 0;
+        padding: 0;
     }
     form {
         width: 36em;
@@ -169,7 +206,7 @@ DEFAULT_FRONTPAGE = six.u("""\
 {{#entries}}
 <li><a class="manual" href="{{name}}/">{{name}}</a>
     <span class="stats">
-    <a class="download" href="{{name}}.zip">&#8595; Download</a>
+    <a class="download" href="{{name}}.zip"><i class="fa fa-download"></i> Download</a>
     Size: {{size}}; Modified: {{modified}}
     </span></li>
 {{/entries}}
