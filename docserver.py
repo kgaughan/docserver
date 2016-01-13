@@ -304,18 +304,33 @@ class BadRequest(HTTPError):
         super(BadRequest, self).__init__(http.BAD_REQUEST, message)
 
 
-class MovedPermanently(HTTPError):
+class _Redirect(HTTPError):
     """
-    Resource moved permanently.
+    A redirect. Subclass to set the code.
     """
 
+    code = None
+
     def __init__(self, location, message=None):
-        super(MovedPermanently, self).__init__(http.MOVED_PERMANENTLY,
-                                               message)
+        super(_Redirect, self).__init__(self.code, message)
         self.location = location
 
     def headers(self):
         return [('Location', self.location)]
+
+
+class MovedPermanently(_Redirect):
+    """
+    Resource moved permanently.
+    """
+    code = http.MOVED_PERMANENTLY
+
+
+class Found(_Redirect):
+    """
+    Temporary redirect.
+    """
+    code = http.FOUND
 
 
 class MethodNotAllowed(HTTPError):
