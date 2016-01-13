@@ -516,7 +516,15 @@ class DocServer(App):
                     info = archive.getinfo(filename)
                 except KeyError:
                     # No such file in the bundle.
-                    raise NotFound()
+                    if filename != 'index.html':
+                        raise NotFound()
+                    # Fallback to the shortest file ending in '/index.html' in
+                    # the archive.
+                    filename = find_fallback_index(archive)
+                    if filename is None:
+                        raise NotFound()
+                    path = '/%s/%s' % (parts[1], filename)
+                    raise Found(absolute(environ, path=path))
                 timestamp = time.mktime(info.date_time + (0, 0, 0))
                 if check_if_unmodified(environ, timestamp):
                     # Expire 5m from now.
@@ -621,6 +629,19 @@ class DocServer(App):
                 'modified': humanize.naturaltime(modified),
                 'size': humanize.naturalsize(stat.st_size, binary=True),
             }
+
+
+def find_fallback_index(archive):
+    """
+    For the root, we search the archive to find the shortest filename ending in
+    'index.html' and redirect to that.
+    """
+    result = None
+    for info in archive.infolist():
+        if info.filename.endswith('/index.html') and \
+                (result is None or len(info.filename) < len(result)):
+            alternative = info.filename
+    return alternative
 
 
 # pylint: disable-msg=W0613
