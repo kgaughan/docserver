@@ -375,13 +375,15 @@ def parse_form(environ):  # pragma: no cover
         environ=environ)
 
 
-def absolute(environ, add_slash=False):
+def absolute(environ, path=None, add_slash=False):
     """
     Reconstruct the URL, and append a trailing slash.
     """
+    if path is None:
+        path = '/' + environ['PATH_INFO']
     url = '{0}://{1}{2}'.format(environ['wsgi.url_scheme'],
                                 environ['HTTP_HOST'],
-                                environ['PATH_INFO'])
+                                path)
     if add_slash and url[-1] != '/':
         url += '/'
     return url
