@@ -17,25 +17,9 @@
 
 """
 A PyPI-style documentation server.
-
-Usage:
-  docserver [--host=HOST] [--port=PORT] [--store=STORE] [--template=TEMPLATE]
-  docserver --print-template
-  docserver --help|--version
-
-Option:
-  --help               Show this screen
-  --version            Show version
-  --host=HOST          Hostname or address to bind server to
-                       [default: localhost]
-  --port=PORT          Port to run server on
-                       [default: 8080]
-  --store=STORE        Path to bundle store directory
-                       [default: ~/docstore]
-  --template=TEMPLATE  Path to frontpage template
-  --print-template     Print out the default frontpage template
 """
 
+import argparse
 import cgi
 import contextlib
 import datetime
@@ -52,7 +36,6 @@ import sys
 import time
 import zipfile
 
-import docopt
 import humanize
 import pystache
 
@@ -257,14 +240,11 @@ class HTTPError(Exception):
     Application wants to respond with the given HTTP status code.
     """
 
-    message = None
-
     def __init__(self, code, message=None):
         if message is None:
             message = http.responses[code]
-        super(HTTPError, self).__init__()
+        super().__init__(message)
         self.code = code
-        self.message = message
 
     # pylint: disable-msg=R0201
     def headers(self):  # pragma: no cover
@@ -280,7 +260,7 @@ class NotModified(HTTPError):
     """
 
     def __init__(self, expire=None):
-        super(NotModified, self).__init__(http.NOT_MODIFIED)
+        super().__init__(http.NOT_MODIFIED)
         self.expire = expire
 
     def headers(self):
@@ -293,7 +273,7 @@ class NotFound(HTTPError):
     """
 
     def __init__(self, message=None):
-        super(NotFound, self).__init__(http.NOT_FOUND, message)
+        super().__init__(http.NOT_FOUND, message)
 
 
 class BadRequest(HTTPError):
@@ -302,7 +282,7 @@ class BadRequest(HTTPError):
     """
 
     def __init__(self, message=None):
-        super(BadRequest, self).__init__(http.BAD_REQUEST, message)
+        super().__init__(http.BAD_REQUEST, message)
 
 
 class _Redirect(HTTPError):
@@ -313,7 +293,7 @@ class _Redirect(HTTPError):
     code = None
 
     def __init__(self, location, message=None):
-        super(_Redirect, self).__init__(self.code, message)
+        super().__init__(self.code, message)
         self.location = location
 
     def headers(self):
@@ -342,7 +322,7 @@ class MethodNotAllowed(HTTPError):
     """
 
     def __init__(self, allowed=(), message=None):
-        super(MethodNotAllowed, self).__init__(http.METHOD_NOT_ALLOWED, message)
+        super().__init__(http.METHOD_NOT_ALLOWED, message)
         self.allowed = allowed
 
     def headers(self):
@@ -421,7 +401,7 @@ class App(object):
                 content = []
             else:
                 headers.append(("Content-Type", "text/plain"))
-                content = [exc.message.encode()]
+                content = [str(exc).encode()]
             start_response(make_status_line(exc.code), headers)
             return content
 
@@ -471,7 +451,7 @@ class DocServer(App):
     """
 
     def __init__(self, store=None, template=None):
-        super(DocServer, self).__init__()
+        super().__init__()
         self.store = get_store(store)
         self.frontpage = pystache.parse(get_template(template))
         self.refresh = pystache.parse(POST_REDIRECT)
@@ -667,25 +647,49 @@ def main(argv=sys.argv):
     """
     Run the WSGI application using :mod:`wsgiref`.
     """
-    args = docopt.docopt(__doc__, argv[1:], version=__version__)
+    parser = argparse.ArgumentParser(description="A PyPI-style documentation server.")
+    parser.add_argument(
+        "--host",
+        help="hostname or address to bind server to",
+        default="localhost",
+    )
+    parser.add_argument(
+        "--port",
+        help="port to run server on",
+        type=int,
+        default=8080,
+    )
+    parser.add_argument(
+        "--store",
+        help="path to bundle store directory",
+        default="~/docstore",
+    )
+    parser.add_argument(
+        "--template",
+        help="path to frontpage template",
+        type=str,
+    )
+    parser.add_argument(
+        "--print-template",
+        action="store_true",
+    )
+    args = parser.parse_args()
 
-    if args["--print-template"]:
+    if args.print_template:
         print(DEFAULT_FRONTPAGE)
         return 0
 
-    host = args["--host"]
-    port = int(args["--port"])
-    store = os.path.realpath(os.path.expanduser(args["--store"]))
-    template = args["--template"]
+    print(args)
+    store = os.path.realpath(os.path.expanduser(args.store))
 
-    if 0 > port > 65535:
-        print("Bad port:", port, file=sys.stderr)
+    if 0 > args.port > 65535:
+        print("Bad port:", args.port, file=sys.stderr)
         return 1
 
     try:
-        app = create_application(None, store=store, template=template)
+        app = create_application(None, store=store, template=args.template)
     except BadPath as exc:
-        print(exc.message, file=sys.stderr)
+        print(exc, file=sys.stderr)
         return 1
 
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
@@ -693,11 +697,14 @@ def main(argv=sys.argv):
     from wsgiref.util import guess_scheme
 
     scheme = guess_scheme(os.environ)
-    print("Serving on {}://{}:{}/".format(scheme, host, port), file=sys.stderr)
+    print(
+        "Serving on {}://{}:{}/".format(scheme, args.host, args.port),
+        file=sys.stderr,
+    )
 
     from wsgiref.simple_server import make_server
 
-    make_server(host, port, app).serve_forever()
+    make_server(args.host, args.port, app).serve_forever()
     return 0
 
 
