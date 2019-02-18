@@ -1,0 +1,26 @@
+[build-system]
+requires = ["flit"]
+build-backend = "flit.buildapi"
+
+[tool.flit.metadata]
+module = "docserver"
+author = "Keith Gaughan"
+author-email = "k@stereochro.me"
+home-page = "https://github.com/kgaughan/docserver"
+requires-python = ">=3.3"
+requires = [
+	"docopt",
+	"humanize",
+	"pystache",
+]
+classifiers = [
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 2.7",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Application",
+]
+
+[tool.flit.entrypoints."paste.app_factory"]
+main = "docserver:create_application"

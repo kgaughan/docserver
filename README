@@ -1,4 +1,3 @@
-
 docserver - a documentation server in the vein of PyPI
 ======================================================
 
@@ -80,3 +79,5 @@ To install additional versions of Python for testing, I recommend pyenv_.
 .. _tox: http://testrun.org/
 .. _detox: https://pypi.python.org/pypi/detox
 .. _pyenv: https://github.com/yyuu/pyenv/
+
+.. vim:set ft=rst:
