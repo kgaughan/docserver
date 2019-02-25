@@ -12,6 +12,7 @@ requires = [
 	"docopt",
 	"humanize",
 	"pystache",
+	"werkzeug",
 ]
 classifiers = [
     "Environment :: Web Environment",
