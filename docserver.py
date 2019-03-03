@@ -36,6 +36,7 @@ import humanize
 import pystache
 from werkzeug.exceptions import BadRequest, NotFound
 from werkzeug.routing import Map, Rule
+from werkzeug.serving import run_simple
 from werkzeug.utils import redirect
 from werkzeug.wrappers import Request, Response
 
@@ -431,10 +432,7 @@ def main(argv=sys.argv):
 
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 
-    from wsgiref.simple_server import make_server
-
-    make_server(args.host, args.port, app).serve_forever()
-    return 0
+    run_simple(args.host, args.port, app)
 
 
 if __name__ == "__main__":
