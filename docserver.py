@@ -285,10 +285,11 @@ class DocServer:
         Request convert the WSGI request to a more convenient format.
         """
         request = Request(environ)
-        return self.url_map.bind_to_environ(request.environ).dispatch(
+        response = self.url_map.bind_to_environ(request.environ).dispatch(
             lambda ep, values: getattr(self, 'on_' + ep)(request, **values),
             catch_http_exceptions=True,
         )
+        return response(environ, start_response)
 
     def on_index(self, request):
         """
