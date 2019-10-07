@@ -39,7 +39,8 @@ from werkzeug.serving import run_simple
 from werkzeug.utils import redirect
 from werkzeug.wrappers import Request, Response
 
-__version__ = "0.1.0"
+
+__version__ = "0.2.0"
 
 
 logger = logging.getLogger("docserver")
