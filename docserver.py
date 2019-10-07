@@ -20,25 +20,24 @@ A PyPI-style documentation server.
 """
 
 import argparse
-import cgi
-import contextlib
 import datetime
-import email.utils
 import glob
 from http import client as http
-import io
 import logging
 import mimetypes
 import os
 import os.path
 import re
 import sys
-import time
 import zipfile
 
 import humanize
 import pystache
-
+from werkzeug.exceptions import BadRequest, NotFound
+from werkzeug.routing import Map, Rule
+from werkzeug.serving import run_simple
+from werkzeug.utils import redirect
+from werkzeug.wrappers import Request, Response
 
 __version__ = "0.1.0"
 
@@ -220,198 +219,11 @@ Powered by
 </body></html>
 """
 
-POST_REDIRECT = """\
-<!DOCTYPE html>
-<html><head>
-
-    <title>See: {{url}}</title>
-    <meta http-equiv="refresh" content="1; url={{url}}">
-
-</head><body>
-
-<p>See: <a href="{{url}}">{{url}}</a></p>
-
-</body></html>
-"""
-
-
-class HTTPError(Exception):
-    """
-    Application wants to respond with the given HTTP status code.
-    """
-
-    def __init__(self, code, message=None):
-        if message is None:
-            message = http.responses[code]
-        super().__init__(message)
-        self.code = code
-
-    # pylint: disable-msg=R0201
-    def headers(self):  # pragma: no cover
-        """
-        Additional headers to be sent.
-        """
-        return []
-
-
-class NotModified(HTTPError):
-    """
-    Resource not modified.
-    """
-
-    def __init__(self, expire=None):
-        super().__init__(http.NOT_MODIFIED)
-        self.expire = expire
-
-    def headers(self):
-        return [("Expire", email.utils.formatdate(self.expire))]
-
-
-class NotFound(HTTPError):
-    """
-    Resource not found.
-    """
-
-    def __init__(self, message=None):
-        super().__init__(http.NOT_FOUND, message)
-
-
-class BadRequest(HTTPError):
-    """
-    Bad request.
-    """
-
-    def __init__(self, message=None):
-        super().__init__(http.BAD_REQUEST, message)
-
-
-class _Redirect(HTTPError):
-    """
-    A redirect. Subclass to set the code.
-    """
-
-    code = None
-
-    def __init__(self, location, message=None):
-        super().__init__(self.code, message)
-        self.location = location
-
-    def headers(self):
-        return [("Location", self.location)]
-
-
-class MovedPermanently(_Redirect):
-    """
-    Resource moved permanently.
-    """
-
-    code = http.MOVED_PERMANENTLY
-
-
-class Found(_Redirect):
-    """
-    Temporary redirect.
-    """
-
-    code = http.FOUND
-
-
-class MethodNotAllowed(HTTPError):
-    """
-    Method not allowed.
-    """
-
-    def __init__(self, allowed=(), message=None):
-        super().__init__(http.METHOD_NOT_ALLOWED, message)
-        self.allowed = allowed
-
-    def headers(self):
-        return [("Allow", ", ".join(self.allowed))]
-
-
-def make_status_line(code):
-    """
-    Create a HTTP status line.
-    """
-    return "{0} {1}".format(code, http.responses[code])
-
-
-def require_method(environ, allowed=()):
-    """
-    Require that the request method is allowed.
-    """
-    if environ["REQUEST_METHOD"] not in allowed:
-        raise MethodNotAllowed(allowed)
-
-
-def parse_form(environ):  # pragma: no cover
-    """
-    Parse the submitted request.
-    """
-    try:
-        request_size = int(environ.get("CONTENT_LENGTH", 0))
-    except ValueError:
-        request_size = 0
-    return cgi.FieldStorage(
-        fp=io.BytesIO(environ["wsgi.input"].read(request_size)), environ=environ
-    )
-
-
-def absolute(environ, path=None, add_slash=False):
-    """
-    Reconstruct the URL, and append a trailing slash.
-    """
-    if path is None:
-        path = environ["PATH_INFO"]
-    url = "{}://{}{}".format(environ["wsgi.url_scheme"], environ["HTTP_HOST"], path)
-    if add_slash and url[-1] != "/":
-        url += "/"
-    return url
-
-
-def check_if_unmodified(environ, timestamp):
-    """
-    Check the *If-Modified-Since* header and to see if we need to send a
-    '304 Not Modified' response.
-    """
-    last_modified = environ.get("HTTP_IF_MODIFIED_SINCE")
-    if last_modified is None:
-        return False
-    parsed = email.utils.parsedate(last_modified)
-    return timestamp != parsed
-
-
-class App(object):
-    """
-    Application base class.
-    """
-
-    def __call__(self, environ, start_response):
-        """
-        Request convert the WSGI request to a more convenient format.
-        """
-        try:
-            code, headers, content = self.run(environ)
-            start_response(make_status_line(code), headers)
-            return content
-        except HTTPError as exc:
-            headers = exc.headers()
-            if exc.code in (100, 101, 204, 304):
-                # These must not send message bodies.
-                content = []
-            else:
-                headers.append(("Content-Type", "text/plain"))
-                content = [str(exc).encode()]
-            start_response(make_status_line(exc.code), headers)
-            return content
-
 
 class BadPath(Exception):
     """
     Bad path.
     """
-
-    pass
 
 
 def scrub_name(name):
@@ -445,121 +257,60 @@ def get_template(template):
         return fp.read()
 
 
-class DocServer(App):
+def render(template, **kwargs):
+    return Response(
+        pystache.render(template, **kwargs), mimetype="text/html; charset=utf-8"
+    )
+
+
+class DocServer:
     """
     A documentation server.
     """
+
+    url_map = Map(
+        [
+            Rule("/", endpoint="index", methods=["GET", "POST"]),
+            Rule("/<bundle>.zip", endpoint="download", methods=["GET"]),
+            Rule("/<bundle>/", endpoint="page", methods=["GET"]),
+            Rule("/<bundle>/<path:page>", endpoint="page", methods=["GET"]),
+        ]
+    )
 
     def __init__(self, store=None, template=None):
         super().__init__()
         self.store = get_store(store)
         self.frontpage = pystache.parse(get_template(template))
-        self.refresh = pystache.parse(POST_REDIRECT)
 
-    def run(self, environ):
+    def __call__(self, environ, start_response):
         """
-        Dispatch request.
+        Request convert the WSGI request to a more convenient format.
         """
-        if re.match(r"/[a-z0-9.\-]+\.zip$", environ["PATH_INFO"], re.I):
-            require_method(environ, ("GET", "HEAD"))
-            return self.download(environ)
-        if environ["PATH_INFO"] != "/":
-            require_method(environ, ("GET", "HEAD"))
-            return self.display(environ)
-        if environ["REQUEST_METHOD"] in ("GET", "HEAD"):
-            return self.contents(environ)
-        if environ["REQUEST_METHOD"] == "POST":
-            return self.submit(environ)
-        raise MethodNotAllowed(("GET", "HEAD", "POST"))
-
-    def display(self, environ):
-        """
-        Display a file from a documentation bundle.
-        """
-        parts = environ["PATH_INFO"].split("/", 2)
-        path = os.path.join(self.store, parts[1][:2], parts[1] + ".zip")
-        if len(parts) == 2:
-            if os.path.isfile(path):
-                raise MovedPermanently(absolute(environ, add_slash=True))
-            raise NotFound()
-
-        filename = parts[2]
-        if filename == "" or filename[-1] == "/":
-            filename += "index.html"
-
-        mimetype, _ = mimetypes.guess_type(filename)
-        if mimetype is None:
-            mimetype = "application/octet-stream"
-
-        try:
-            with contextlib.closing(zipfile.ZipFile(path, "r")) as archive:
-                try:
-                    info = archive.getinfo(filename)
-                except KeyError:
-                    # No such file in the bundle.
-                    if filename != "index.html":
-                        raise NotFound()
-                    # Fallback to the shortest file ending in '/index.html' in
-                    # the archive.
-                    filename = find_fallback_index(archive)
-                    if filename is None:
-                        raise NotFound()
-                    path = "/%s/%s" % (parts[1], filename)
-                    raise Found(absolute(environ, path=path))
-                timestamp = time.mktime(info.date_time + (0, 0, 0))
-                if check_if_unmodified(environ, timestamp):
-                    # Expire 5m from now.
-                    raise NotModified(time.time() + 60 * 5)
-                content = archive.read(info)
-        except IOError:
-            # No such bundle.
-            raise NotFound()
-
-        return (
-            http.OK,
-            [
-                ("Content-Type", mimetype),
-                ("Last-Modified", email.utils.formatdate(timestamp)),
-            ],
-            [content],
+        request = Request(environ)
+        response = self.url_map.bind_to_environ(request.environ).dispatch(
+            lambda ep, values: getattr(self, "on_" + ep)(request, **values),
+            catch_http_exceptions=True,
         )
+        return response(environ, start_response)
 
-    # pylint: disable-msg=W0613
-    def contents(self, environ):
+    def on_index(self, request):
         """
         List documentation bundles.
         """
-        content = pystache.render(
-            self.frontpage, entries=list(self.get_entries()), version=__version__
-        )
-        return (
-            http.OK,
-            [("Content-Type", "text/html; charset=utf-8")],
-            [content.encode("utf-8")],
-        )
+        if request.method == "GET":
+            return render(
+                self.frontpage, entries=list(self.get_entries()), version=__version__
+            )
 
-    def download(self, environ):
-        parts = environ["PATH_INFO"].split("/", 2)
-        path = os.path.join(self.store, parts[1][:2], parts[1])
-        if not os.path.isfile(path):
-            raise NotFound()
-        with open(path, "rb") as fh:
-            return (http.OK, [("Content-Type", "application/zip")], [fh.read()])
-
-    def submit(self, environ):
-        """
-        Process a documentation bundle submission.
-        """
-        form = parse_form(environ)
-        if form.getvalue(":action") != "doc_upload":
+        # Process an upload instead.
+        if request.form.get(":action") != "doc_upload":
             raise BadRequest(":action must be 'doc_upload'")
-        if "content" not in form:
-            raise BadRequest("No content submitted")
-        content = form["content"]
-        if isinstance(content, list):
-            raise BadRequest("Submit only one documentation bundle.")
 
-        name = form.getvalue("name", "").strip()
+        content = request.files.get("content")
+        if content is None:
+            raise BadRequest("No content submitted")
+
+        name = request.form.get("name", "").strip()
         if name == "":
             name = content.filename
             if name.endswith(".zip"):
@@ -569,7 +320,7 @@ class DocServer(App):
             raise BadRequest("Name must be at least two characters long.")
 
         try:
-            archive = zipfile.ZipFile(io.BytesIO(content.value))
+            archive = zipfile.ZipFile(content.stream)
             if archive.testzip() is not None:
                 raise BadRequest("Bad Zip file")
         except zipfile.BadZipfile:
@@ -578,30 +329,37 @@ class DocServer(App):
         catalogue = os.path.join(self.store, name[:2])
         if not os.path.isdir(catalogue):
             os.makedirs(catalogue)
-        with open(os.path.join(catalogue, name + ".zip"), "wb") as fp:
-            fp.write(content.value)
+        content.save(os.path.join(catalogue, name + ".zip"))
 
-        logger.info("Upload [%s] %s", environ["REMOTE_HOST"], name)
+        return redirect(request.base_url, code=http.SEE_OTHER)
 
-        here = absolute(environ)
+    def on_download(self, request, bundle):
+        path = os.path.join(self.store, bundle[:2], bundle + ".zip")
+        if not os.path.isfile(path):
+            raise NotFound()
+        with open(path, "rb") as fh:
+            return Response(fh.read(), mimetype="application/zip")
 
-        # For 'python setup.py upload_docs' to work properly without
-        # reporting a spurious error. It's the least worst way of checking
-        # if the upload is happening via CLI or a form.
-        if "HTTP_REFERER" not in environ:
-            bundle = here + name + "/"
-            content = pystache.render(self.refresh, url=bundle)
-            return (
-                http.OK,
-                [("Content-Type", "text/html; charset=utf-8"), ("Location", bundle)],
-                [content.encode("utf-8")],
-            )
+    def on_page(self, request, bundle, page="index.html"):
+        """
+        Display a file from a documentation bundle.
+        """
+        bundle_path = os.path.join(self.store, bundle[:2], bundle + ".zip")
+        if not os.path.isfile(bundle_path):
+            raise NotFound()
 
-        return (
-            http.SEE_OTHER,
-            [("Content-Type", "text/plain"), ("Location", here)],
-            [here.encode("utf-8")],
-        )
+        mimetype, _ = mimetypes.guess_type(page)
+        if mimetype is None:
+            mimetype = "application/octet-stream"
+
+        with zipfile.ZipFile(bundle_path, "r") as archive:
+            try:
+                info = archive.getinfo(page)
+            except KeyError:
+                raise NotFound()
+            content = archive.read(info)
+
+        return Response(content, mimetype=mimetype)
 
     def get_entries(self):
         """
@@ -613,33 +371,10 @@ class DocServer(App):
             modified = datetime.datetime.fromtimestamp(stat.st_mtime)
             yield {
                 # The first '4' refers to '/??/', the second to '.zip'
-                "name": entry[len(self.store) + 4:-4],
+                "name": entry[len(self.store) + 4 : -4],
                 "modified": humanize.naturaltime(modified),
                 "size": humanize.naturalsize(stat.st_size, binary=True),
             }
-
-
-def find_fallback_index(archive):
-    """
-    For the root, we search the archive to find the shortest filename ending in
-    'index.html' and redirect to that.
-    """
-    result = None
-    alternative = None
-    for info in archive.infolist():
-        if info.filename.endswith("/index.html") and (
-            result is None or len(info.filename) < len(result)
-        ):
-            alternative = info.filename
-    return alternative
-
-
-# pylint: disable-msg=W0613
-def create_application(global_config=None, **local_conf):
-    """
-    Create a configured instance of the WSGI application.
-    """
-    return DocServer(**local_conf)
 
 
 # pylint: disable-msg=W0102
@@ -649,37 +384,20 @@ def main(argv=sys.argv):
     """
     parser = argparse.ArgumentParser(description="A PyPI-style documentation server.")
     parser.add_argument(
-        "--host",
-        help="hostname or address to bind server to",
-        default="localhost",
+        "--host", help="hostname or address to bind server to", default="localhost"
     )
+    parser.add_argument("--port", help="port to run server on", type=int, default=8080)
     parser.add_argument(
-        "--port",
-        help="port to run server on",
-        type=int,
-        default=8080,
+        "--store", help="path to bundle store directory", default="~/docstore"
     )
-    parser.add_argument(
-        "--store",
-        help="path to bundle store directory",
-        default="~/docstore",
-    )
-    parser.add_argument(
-        "--template",
-        help="path to frontpage template",
-        type=str,
-    )
-    parser.add_argument(
-        "--print-template",
-        action="store_true",
-    )
+    parser.add_argument("--template", help="path to frontpage template", type=str)
+    parser.add_argument("--print-template", action="store_true")
     args = parser.parse_args()
 
     if args.print_template:
         print(DEFAULT_FRONTPAGE)
         return 0
 
-    print(args)
     store = os.path.realpath(os.path.expanduser(args.store))
 
     if 0 > args.port > 65535:
@@ -687,25 +405,14 @@ def main(argv=sys.argv):
         return 1
 
     try:
-        app = create_application(None, store=store, template=args.template)
+        app = DocServer(store=store, template=args.template)
     except BadPath as exc:
         print(exc, file=sys.stderr)
         return 1
 
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 
-    from wsgiref.util import guess_scheme
-
-    scheme = guess_scheme(os.environ)
-    print(
-        "Serving on {}://{}:{}/".format(scheme, args.host, args.port),
-        file=sys.stderr,
-    )
-
-    from wsgiref.simple_server import make_server
-
-    make_server(args.host, args.port, app).serve_forever()
-    return 0
+    run_simple(args.host, args.port, app)
 
 
 if __name__ == "__main__":

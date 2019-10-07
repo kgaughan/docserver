@@ -9,9 +9,9 @@ author-email = "k@stereochro.me"
 home-page = "https://github.com/kgaughan/docserver"
 requires-python = ">=3.3"
 requires = [
-	"docopt",
 	"humanize",
 	"pystache",
+	"werkzeug>=0.15",
 ]
 classifiers = [
     "Environment :: Web Environment",
