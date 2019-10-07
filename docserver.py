@@ -20,7 +20,6 @@ A PyPI-style documentation server.
 """
 
 import argparse
-import contextlib
 import datetime
 import glob
 from http import client as http
@@ -260,8 +259,7 @@ def get_template(template):
 
 def render(template, **kwargs):
     return Response(
-        pystache.render(template, **kwargs),
-        mimetype="text/html; charset=utf-8",
+        pystache.render(template, **kwargs), mimetype="text/html; charset=utf-8"
     )
 
 
@@ -270,11 +268,14 @@ class DocServer:
     A documentation server.
     """
 
-    url_map = Map([
-        Rule('/', endpoint='index', methods=['GET', 'POST']),
-        Rule('/<bundle>.zip', endpoint='download', methods=['GET']),
-        Rule('/<bundle>/<path:page>', endpoint='page', methods=['GET']),
-    ])
+    url_map = Map(
+        [
+            Rule("/", endpoint="index", methods=["GET", "POST"]),
+            Rule("/<bundle>.zip", endpoint="download", methods=["GET"]),
+            Rule("/<bundle>/", endpoint="page", methods=["GET"]),
+            Rule("/<bundle>/<path:page>", endpoint="page", methods=["GET"]),
+        ]
+    )
 
     def __init__(self, store=None, template=None):
         super().__init__()
@@ -287,7 +288,7 @@ class DocServer:
         """
         request = Request(environ)
         response = self.url_map.bind_to_environ(request.environ).dispatch(
-            lambda ep, values: getattr(self, 'on_' + ep)(request, **values),
+            lambda ep, values: getattr(self, "on_" + ep)(request, **values),
             catch_http_exceptions=True,
         )
         return response(environ, start_response)
@@ -298,9 +299,7 @@ class DocServer:
         """
         if request.method == "GET":
             return render(
-                self.frontpage,
-                entries=list(self.get_entries()),
-                version=__version__,
+                self.frontpage, entries=list(self.get_entries()), version=__version__
             )
 
         # Process an upload instead.
@@ -335,13 +334,13 @@ class DocServer:
         return redirect(request.base_url, code=http.SEE_OTHER)
 
     def on_download(self, request, bundle):
-        path = os.path.join(self.store, bundle[:2], bundle + '.zip')
+        path = os.path.join(self.store, bundle[:2], bundle + ".zip")
         if not os.path.isfile(path):
             raise NotFound()
         with open(path, "rb") as fh:
             return Response(fh.read(), mimetype="application/zip")
 
-    def on_page(self, request, bundle, path):
+    def on_page(self, request, bundle, page="index.html"):
         """
         Display a file from a documentation bundle.
         """
@@ -349,16 +348,13 @@ class DocServer:
         if not os.path.isfile(bundle_path):
             raise NotFound()
 
-        if path == "" or path[-1] == "/":
-            path = os.path.join(path, "index.html")
-
-        mimetype, _ = mimetypes.guess_type(path)
+        mimetype, _ = mimetypes.guess_type(page)
         if mimetype is None:
             mimetype = "application/octet-stream"
 
-        with contextlib.closing(zipfile.ZipFile(bundle_path, "r")) as archive:
+        with zipfile.ZipFile(bundle_path, "r") as archive:
             try:
-                info = archive.getinfo(path)
+                info = archive.getinfo(page)
             except KeyError:
                 raise NotFound()
             content = archive.read(info)
@@ -375,7 +371,7 @@ class DocServer:
             modified = datetime.datetime.fromtimestamp(stat.st_mtime)
             yield {
                 # The first '4' refers to '/??/', the second to '.zip'
-                "name": entry[len(self.store) + 4:-4],
+                "name": entry[len(self.store) + 4 : -4],
                 "modified": humanize.naturaltime(modified),
                 "size": humanize.naturalsize(stat.st_size, binary=True),
             }
@@ -388,30 +384,14 @@ def main(argv=sys.argv):
     """
     parser = argparse.ArgumentParser(description="A PyPI-style documentation server.")
     parser.add_argument(
-        "--host",
-        help="hostname or address to bind server to",
-        default="localhost",
+        "--host", help="hostname or address to bind server to", default="localhost"
     )
+    parser.add_argument("--port", help="port to run server on", type=int, default=8080)
     parser.add_argument(
-        "--port",
-        help="port to run server on",
-        type=int,
-        default=8080,
+        "--store", help="path to bundle store directory", default="~/docstore"
     )
-    parser.add_argument(
-        "--store",
-        help="path to bundle store directory",
-        default="~/docstore",
-    )
-    parser.add_argument(
-        "--template",
-        help="path to frontpage template",
-        type=str,
-    )
-    parser.add_argument(
-        "--print-template",
-        action="store_true",
-    )
+    parser.add_argument("--template", help="path to frontpage template", type=str)
+    parser.add_argument("--print-template", action="store_true")
     args = parser.parse_args()
 
     if args.print_template:
