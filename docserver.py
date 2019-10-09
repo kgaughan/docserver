@@ -320,20 +320,15 @@ class DocServer:
         if len(name) < 2:
             raise BadRequest("Name must be at least two characters long.")
 
-        # HACK: Force the SpooledTemporaryFile to be written to disc. This is
-        # needed otherwise we get the error "'SpooledTemporaryFile' object has
-        # no attribute 'seekable'"
-        content.stream.seekable = lambda: True
-
         try:
-            archive = zipfile.ZipFile(content.stream)
+            archive = zipfile.ZipFile(content)
             if archive.testzip() is not None:
                 raise BadRequest("Bad Zip file")
         except zipfile.BadZipfile:
             raise BadRequest("Bad Zip file")
 
         # Reset to the start, or we'll end up with a truncated file.
-        content.stream.seek(0, 0)
+        content.seek(0, 0)
 
         catalogue = os.path.join(self.store, name[:2])
         if not os.path.isdir(catalogue):
