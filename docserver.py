@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright (c) Keith Gaughan, 2013
+# Copyright (c) Keith Gaughan, 2013-2019
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ from werkzeug.utils import redirect
 from werkzeug.wrappers import Request, Response
 
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 
 logger = logging.getLogger("docserver")
